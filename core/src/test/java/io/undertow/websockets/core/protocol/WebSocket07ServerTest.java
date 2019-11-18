@@ -82,9 +82,9 @@ public class WebSocket07ServerTest extends AbstractWebSocketServerTest {
         final FutureResult latch = new FutureResult();
         final byte[] payload =  "payload".getBytes();
 
-        WebSocketTestClient client = new WebSocketTestClient(getVersion(), new URI("ws://" + NetworkUtils.formatPossibleIpv6Address(DefaultServer.getHostAddress("default")) + ':' + DefaultServer.getHostPort("default") + '/'));
+        WebSocketTestClient client = new WebSocketTestClient(getVersion(), new URI("ws://" + NetworkUtils.formatPossibleIpv6Address(DefaultServer.getHostAddress("default")) + ':' + DefaultServer.getHostPort("default") + '/'), new FrameChecker(PongWebSocketFrame.class, payload, latch));
         client.connect();
-        client.send(new PingWebSocketFrame(Unpooled.wrappedBuffer(payload)), new FrameChecker(PongWebSocketFrame.class, payload, latch));
+        client.send(new PingWebSocketFrame(Unpooled.wrappedBuffer(payload)));
         latch.getIoFuture().get();
         client.destroy();
     }

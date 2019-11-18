@@ -57,12 +57,14 @@ public final class WebSocketTestClient {
     private final URI uri;
     private final WebSocketVersion version;
     private volatile boolean closed;
+    FrameListener listener;
 
     private static final AtomicInteger count = new AtomicInteger();
 
-    public WebSocketTestClient(WebSocketVersion version, URI uri) {
+    public WebSocketTestClient(WebSocketVersion version, URI uri, FrameListener listener) {
         this.uri = uri;
         this.version = version;
+        this.listener = listener;
     }
 
     /**
@@ -91,12 +93,30 @@ public final class WebSocketTestClient {
                         p.addLast(
                                 new HttpClientCodec(),
                                 new HttpObjectAggregator(8192),
-                                new WSClientHandler(handshaker, handshakeLatch));
+                                new WSClientHandler(handshaker, handshakeLatch),
+                                new SimpleChannelInboundHandler<Object>() {
+
+                            @Override
+                            protected void channelRead0(ChannelHandlerContext ctx, Object msg) throws Exception {
+                                if (msg instanceof CloseWebSocketFrame) {
+                                    closed = true;
+                                }
+                                listener.onFrame((WebSocketFrame) msg);
+                                ctx.pipeline().remove(this);
+                            }
+
+                            @Override
+                            public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+                                cause.printStackTrace();
+                                listener.onError(cause);
+                                ctx.pipeline().remove(this);
+                            }
+                        });
                     }
                 });
 
         // Connect
-        ChannelFuture future =
+        /*ChannelFuture future =
                 bootstrap.connect(
                         new InetSocketAddress(uri.getHost(), uri.getPort()));
         future.syncUninterruptibly();
@@ -104,6 +124,10 @@ public final class WebSocketTestClient {
         ch = future.channel();
 
         handshaker.handshake(ch).syncUninterruptibly();
+        handshakeLatch.await();*/
+
+        ch = bootstrap.connect(new InetSocketAddress(uri.getHost(), uri.getPort())).sync().channel();
+        handshaker.handshake(ch);
         handshakeLatch.await();
 
         return this;
@@ -113,25 +137,7 @@ public final class WebSocketTestClient {
      * Send the WebSocketFrame and call the FrameListener once a frame was received as response or
      * when an Exception was caught.
      */
-    public WebSocketTestClient send(WebSocketFrame frame, final FrameListener listener) {
-        ch.pipeline().addLast("responseHandler" + count.incrementAndGet(), new SimpleChannelInboundHandler<Object>() {
-
-            @Override
-            protected void channelRead0(ChannelHandlerContext ctx, Object msg) throws Exception {
-                if (msg instanceof CloseWebSocketFrame) {
-                    closed = true;
-                }
-                listener.onFrame((WebSocketFrame) msg);
-                ctx.pipeline().remove(this);
-            }
-
-            @Override
-            public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-                cause.printStackTrace();
-                listener.onError(cause);
-                ctx.pipeline().remove(this);
-            }
-        });
+    public WebSocketTestClient send(WebSocketFrame frame) {
         ChannelFuture cf = ch.writeAndFlush(frame).syncUninterruptibly();
         if (!cf.isSuccess()) {
             listener.onError(cf.cause());
@@ -144,7 +150,7 @@ public final class WebSocketTestClient {
      */
     public void destroy() {
         if (!closed) {
-            final CountDownLatch latch = new CountDownLatch(1);
+            /*final CountDownLatch latch = new CountDownLatch(1);
             send(new CloseWebSocketFrame(), new FrameListener() {
                 @Override
                 public void onFrame(WebSocketFrame frame) {
@@ -160,7 +166,7 @@ public final class WebSocketTestClient {
                 latch.await(10, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
-            }
+            }*/
         }
         //bootstrap.releaseExternalResources();
         if (ch != null) {

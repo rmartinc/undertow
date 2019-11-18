@@ -83,9 +83,9 @@ public class AbstractWebSocketServerTest {
         }));
 
         final FutureResult<?> latch = new FutureResult();
-        WebSocketTestClient client = new WebSocketTestClient(getVersion(), new URI("ws://" + NetworkUtils.formatPossibleIpv6Address(DefaultServer.getHostAddress("default")) + ":" + DefaultServer.getHostPort("default") + "/"));
+        WebSocketTestClient client = new WebSocketTestClient(getVersion(), new URI("ws://" + NetworkUtils.formatPossibleIpv6Address(DefaultServer.getHostAddress("default")) + ":" + DefaultServer.getHostPort("default") + "/"), new FrameChecker(TextWebSocketFrame.class, "world".getBytes(CharsetUtil.US_ASCII), latch));
         client.connect();
-        client.send(new TextWebSocketFrame(Unpooled.copiedBuffer("hello", CharsetUtil.US_ASCII)), new FrameChecker(TextWebSocketFrame.class, "world".getBytes(CharsetUtil.US_ASCII), latch));
+        client.send(new TextWebSocketFrame(Unpooled.copiedBuffer("hello", CharsetUtil.US_ASCII)));
         latch.getIoFuture().get();
         client.destroy();
     }
@@ -126,9 +126,9 @@ public class AbstractWebSocketServerTest {
         final FutureResult latch = new FutureResult();
         final byte[] payload = "payload".getBytes();
 
-        WebSocketTestClient client = new WebSocketTestClient(getVersion(), new URI("ws://" + NetworkUtils.formatPossibleIpv6Address(DefaultServer.getHostAddress("default")) + ":" + DefaultServer.getHostPort("default") + "/"));
+        WebSocketTestClient client = new WebSocketTestClient(getVersion(), new URI("ws://" + NetworkUtils.formatPossibleIpv6Address(DefaultServer.getHostAddress("default")) + ":" + DefaultServer.getHostPort("default") + "/"), new FrameChecker(BinaryWebSocketFrame.class, payload, latch));
         client.connect();
-        client.send(new BinaryWebSocketFrame(Unpooled.wrappedBuffer(payload)), new FrameChecker(BinaryWebSocketFrame.class, payload, latch));
+        client.send(new BinaryWebSocketFrame(Unpooled.wrappedBuffer(payload)));
         latch.getIoFuture().get();
 
         client.destroy();
@@ -159,9 +159,9 @@ public class AbstractWebSocketServerTest {
         final AtomicBoolean receivedResponse = new AtomicBoolean(false);
 
         final FutureResult latch = new FutureResult();
-        WebSocketTestClient client = new WebSocketTestClient(getVersion(), new URI("ws://" + NetworkUtils.formatPossibleIpv6Address(DefaultServer.getHostAddress("default")) + ":" + DefaultServer.getHostPort("default") + "/"));
+        WebSocketTestClient client = new WebSocketTestClient(getVersion(), new URI("ws://" + NetworkUtils.formatPossibleIpv6Address(DefaultServer.getHostAddress("default")) + ":" + DefaultServer.getHostPort("default") + "/"), new FrameChecker(CloseWebSocketFrame.class, new byte[0], latch));
         client.connect();
-        client.send(new CloseWebSocketFrame(), new FrameChecker(CloseWebSocketFrame.class, new byte[0], latch));
+        client.send(new CloseWebSocketFrame());
         latch.getIoFuture().get();
         Assert.assertFalse(receivedResponse.get());
         client.destroy();
